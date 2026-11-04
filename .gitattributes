@@ -1,0 +1,16 @@
+* text=auto
+
+# The macOS double-click launcher is a shell script; it must stay LF.
+*.command text eol=lf
+*.sh text eol=lf
+
+*.py text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+
+# Windows launchers.
+*.cmd text eol=crlf
+*.ps1 text eol=crlf

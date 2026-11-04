@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# macOS
+.DS_Store
+
+# Logs and local editor state
+*.log
+.idea/
+.vscode/
+
+# Pending proposals are local data. Publishing one would leak whatever document
+# it was written for; the folder itself is kept with .gitkeep.
+proposals/*
+!proposals/.gitkeep

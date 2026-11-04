@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="一行一个节点、两空格一级的树形思维工具。存档就是 Markdown，AI 的改动要点过头才落盘。">
+<title>产品定义 — 树形思维</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='4' cy='10' r='2.4' fill='%237aa2f7'/%3E%3Cpath d='M6 10h4.2V4.8h4.6M10.2 10v5.2h4.6' stroke='%237aa2f7' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='4.8' r='1.8' fill='%237aa2f7' opacity='.7'/%3E%3Ccircle cx='16' cy='15.2' r='1.8' fill='%237aa2f7' opacity='.7'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="mind.css">
+</head>
+<body>
+
+<header id="topbar">
+  <div class="brand">
+    <svg class="mark" viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M5.6 10h3.6M9.2 10V5h4.6M9.2 10v5h4.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="3.6" cy="10" r="2" fill="currentColor"/>
+      <circle cx="15.2" cy="5" r="1.6" fill="currentColor" opacity=".72"/>
+      <circle cx="15.2" cy="15" r="1.6" fill="currentColor" opacity=".72"/>
+    </svg>
+    <span class="brand-name">产品定义</span>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="group">
+    <button class="icon-btn" data-act="new" title="新建文档  Alt+N" aria-label="新建">
+      <svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>
+    </button>
+    <button class="icon-btn" data-act="open" title="打开 .md  Alt+O" aria-label="打开">
+      <svg viewBox="0 0 16 16"><path d="M2.5 5.2h4.1l1.2 1.4h5.7v6.6h-11z"/></svg>
+    </button>
+    <button class="icon-btn" data-act="save" title="保存  Ctrl+S" aria-label="保存">
+      <svg viewBox="0 0 16 16"><path d="M3 3h8.1L13 4.9V13H3z"/><path d="M5.2 3v3.6h5.5V3"/><path d="M5.2 13V9h5.5v4"/></svg>
+    </button>
+  </div>
+
+  <span class="vsep"></span>
+
+  <div class="group">
+    <button class="icon-btn" data-act="undo" title="撤销  Ctrl+Z" aria-label="撤销" disabled>
+      <svg viewBox="0 0 16 16"><path d="M6 4 3 7l3 3"/><path d="M3 7h6.2a4 4 0 0 1 0 8H7.5"/></svg>
+    </button>
+    <button class="icon-btn" data-act="redo" title="重做  Ctrl+Shift+Z" aria-label="重做" disabled>
+      <svg viewBox="0 0 16 16"><path d="m10 4 3 3-3 3"/><path d="M13 7H6.8a4 4 0 0 0 0 8h1.7"/></svg>
+    </button>
+  </div>
+
+  <span class="vsep"></span>
+
+  <div class="group">
+    <button class="icon-btn" data-act="search" title="搜索  Ctrl+F" aria-label="搜索">
+      <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.1"/><path d="m10.2 10.2 3.6 3.6"/></svg>
+    </button>
+    <button class="icon-btn" data-act="fit" title="适应画布  F" aria-label="适应画布">
+      <svg viewBox="0 0 16 16"><path d="M6 3H3v3M10 3h3v3M6 13H3v-3M10 13h3v-3"/></svg>
+    </button>
+    <button class="icon-btn" data-act="export" title="导出" aria-label="导出" aria-haspopup="menu" aria-expanded="false">
+      <svg viewBox="0 0 16 16"><path d="M8 3v7.1"/><path d="m5 7.3 3 3 3-3"/><path d="M3 12.6V13h10v-.4"/></svg>
+    </button>
+  </div>
+
+  <span class="vsep"></span>
+
+  <button id="reviewChip" class="review-chip" hidden title="AI 提交了改动，等你看一眼">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="m5.7 8.2 1.6 1.6 3-3.2"/></svg>
+    <span id="reviewCount">待审批</span>
+  </button>
+
+  <button class="icon-btn help-btn" data-act="help" title="快捷键  ?" aria-label="快捷键">?</button>
+</header>
+
+<nav id="tabbar" aria-label="打开的文档">
+  <div id="tabs" role="tablist"></div>
+  <button id="tabNew" class="tab-new" title="新建文档  Alt+N" aria-label="新建文档">
+    <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 2.6v8.8M2.6 7h8.8"/></svg>
+  </button>
+  <div class="spacer"></div>
+  <button id="folderChip" class="folder-chip" title="选择工作文件夹" aria-haspopup="menu" aria-expanded="false">
+    <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M1.8 4.1h3.6l1.1 1.4h5.7v6H1.8z"/></svg>
+    <span id="folderName">选择文件夹</span>
+  </button>
+</nav>
+
+<main id="stage" tabindex="0" aria-label="思维导图画布">
+  <svg id="links" aria-hidden="true"><g id="linkLayer"></g></svg>
+  <div id="world"></div>
+  <div id="marquee" hidden></div>
+
+  <div id="searchPanel" hidden>
+    <svg class="search-ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.1"/><path d="m10.2 10.2 3.6 3.6"/></svg>
+    <input id="searchInput" type="text" placeholder="搜索节点…" autocomplete="off" spellcheck="false" aria-label="搜索节点">
+    <span id="searchCount">0/0</span>
+    <button id="searchPrev" class="mini" title="上一个  Shift+Enter" aria-label="上一个">↑</button>
+    <button id="searchNext" class="mini" title="下一个  Enter" aria-label="下一个">↓</button>
+    <button id="searchClose" class="mini" title="关闭  Esc" aria-label="关闭搜索">×</button>
+  </div>
+
+  <div id="emptyHint" hidden>
+    <div class="empty-inner">
+      <div class="empty-title">空白的开始</div>
+      <div class="empty-sub">双击空白处放一个节点，<kbd>Enter</kbd> 往下长一层，<kbd>Tab</kbd> 长出子项。</div>
+    </div>
+  </div>
+</main>
+
+<div id="batchBar" class="batch-bar" hidden>
+  <span id="batchText" class="batch-text"></span>
+  <button id="batchOk" class="batch-btn ok" type="button">接受</button>
+  <button id="batchNo" class="batch-btn no" type="button">拒绝</button>
+</div>
+
+<aside id="reviewPanel" class="review-panel" hidden aria-label="待审批改动">
+  <div id="rvGrip" class="panel-grip" title="拖动调整宽度" role="separator" aria-orientation="vertical"></div>
+  <header class="rv-head">
+    <svg class="rv-ico" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.4"/><path d="m4.1 6.1 1.3 1.3 2.5-2.7"/></svg>
+    <span class="rv-title">待审批</span>
+    <button id="rvClose" class="icon-btn note-close" aria-label="关闭" title="先不决定  Esc">×</button>
+  </header>
+  <div class="rv-meta">
+    <span id="rvFile" class="rv-file"></span>
+    <span id="rvCount" class="rv-count"></span>
+  </div>
+  <div id="rvWarn" class="rv-warn" hidden>这份提案写下之后文档又被改过，位置可能对不上。</div>
+  <div id="rvList" class="rv-list"></div>
+  <div id="rvDone" class="rv-done" hidden>
+    <button id="rvDoneHead" class="rv-done-head" type="button">
+      <span id="rvDoneCaret" class="rv-caret">▸</span>
+      <span class="rv-sectitle">已决</span>
+      <span id="rvDoneCount" class="rv-seccount"></span>
+    </button>
+    <div id="rvDoneList" class="rv-done-list" hidden></div>
+  </div>
+  <footer class="rv-foot">
+    <button id="rvWrite" class="rv-primary" type="button">写入</button>
+    <button id="rvAll" class="rv-ghost" type="button">全部接受</button>
+    <span class="spacer"></span>
+    <button id="rvDrop" class="rv-ghost" type="button">全部放弃</button>
+  </footer>
+</aside>
+
+<aside id="notePanel" class="note-panel" hidden aria-label="节点备注">
+  <div id="noteGrip" class="panel-grip" title="拖动调整宽度" role="separator" aria-orientation="vertical"></div>
+  <header class="note-head">
+    <svg class="note-ico" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.6 3.2h6.8M2.6 6h6.8M2.6 8.8h4.4"/></svg>
+    <span id="noteOwner" class="note-owner">未命名</span>
+    <span id="noteMode" class="note-mode" hidden>只读</span>
+    <button id="noteClose" class="icon-btn note-close" aria-label="关闭备注" title="关闭  Esc">×</button>
+  </header>
+  <div class="note-edit" id="noteEdit">
+    <pre class="note-hi" id="noteHi" aria-hidden="true"></pre>
+    <textarea id="noteBody" class="note-body" placeholder="写下这个节点的备注，长一点也没关系。" spellcheck="false" aria-label="备注内容"></textarea>
+  </div>
+  <footer class="note-foot">
+    <button id="noteAddCode" class="note-add" type="button" title="插入代码块" aria-haspopup="menu" aria-expanded="false">
+      <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1.8v6.4M1.8 5h6.4"/></svg><span>代码块</span>
+    </button>
+    <span id="noteCount">空</span>
+    <span id="noteTip" class="note-tip">Esc 收起</span>
+  </footer>
+  <div id="noteLangMenu" class="lang-menu" hidden role="menu">
+    <button type="button" role="menuitem" data-lang="json"><b>{ }</b>JSON</button>
+    <button type="button" role="menuitem" data-lang="ts"><b>TS</b>TypeScript</button>
+    <button type="button" role="menuitem" data-lang="rust"><b>Rs</b>Rust</button>
+  </div>
+</aside>
+
+<div id="aiBar" class="ai-bar" aria-label="让 AI 改这份文件">
+  <div id="aiCard" class="ai-card" hidden>
+    <div class="ai-row">
+      <textarea id="aiText" class="ai-text" rows="1" placeholder="说一下要改什么…" spellcheck="false" aria-label="要交给 AI 的话"></textarea>
+      <button id="aiCopy" class="ai-copy" type="button" disabled
+              title="把这段话连同文件位置、propose 的用法一起复制（Ctrl+Enter）">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><rect x="4.15" y="4.15" width="6.35" height="6.35" rx="1.5"/><path d="M7.85 4.15V2.9A1.4 1.4 0 0 0 6.45 1.5H2.9A1.4 1.4 0 0 0 1.5 2.9v3.55A1.4 1.4 0 0 0 2.9 7.85h1.25"/></svg>
+        <span id="aiCopyLabel">复制给 AI</span>
+      </button>
+    </div>
+    <div class="ai-meta">
+      <span id="aiTarget" class="ai-target"></span>
+      <button id="aiUndo" class="ai-undo" type="button" hidden
+              title="把刚才复制走的那段话放回来（Ctrl+Z）">↩ 放回</button>
+      <span id="aiKeys" class="ai-keys">Ctrl+Enter</span>
+    </div>
+  </div>
+  <button id="aiPill" class="ai-pill" type="button" aria-expanded="false"
+          title="让 AI 改这份文件  Alt+A">
+    <svg viewBox="0 0 12 12" aria-hidden="true">
+      <g class="g-copy"><rect x="4.15" y="4.15" width="6.35" height="6.35" rx="1.5"/><path d="M7.85 4.15V2.9A1.4 1.4 0 0 0 6.45 1.5H2.9A1.4 1.4 0 0 0 1.5 2.9v3.55A1.4 1.4 0 0 0 2.9 7.85h1.25"/></g>
+      <path class="g-check" d="m2.3 6.4 2.2 2.2 5-5.2"/>
+    </svg>
+    <span id="aiPillLabel">让 AI 改</span>
+  </button>
+</div>
+
+<footer id="statusbar">
+  <span id="statCount">1 个节点</span>
+  <span class="sdot">·</span>
+  <span id="statSave" class="save-state">自动保存</span>
+  <div class="spacer"></div>
+  <div class="zoom">
+    <button id="zoomOut" class="mini" title="缩小  Ctrl+-" aria-label="缩小">−</button>
+    <button id="zoomLabel" class="zoom-label" title="回到 100%  Ctrl+0">100%</button>
+    <button id="zoomIn" class="mini" title="放大  Ctrl+=" aria-label="放大">+</button>
+  </div>
+  <span class="vsep"></span>
+  <span class="hint">Enter 新建 · Tab 子项 · 拖顶节点带走整簇 · 框选删除 · N 备注</span>
+</footer>
+
+<div id="exportMenu" class="menu" hidden role="menu">
+  <button data-export="png" role="menuitem"><span>PNG 图片</span><span class="menu-hint">2×</span></button>
+  <button data-export="svg" role="menuitem"><span>SVG 矢量图</span></button>
+  <div class="menu-foot">导出当前可见的树</div>
+</div>
+
+<div id="folderMenu" class="menu" hidden role="menu">
+  <button data-folder="grant" role="menuitem"><span>重新授权</span></button>
+  <button data-folder="write" role="menuitem"><span>把文档写进文件夹</span></button>
+  <button data-folder="review" role="menuitem"><span>检查待审批</span></button>
+  <button data-folder="switch" role="menuitem"><span>换个文件夹</span></button>
+  <button data-folder="unbind" role="menuitem"><span>解除绑定</span></button>
+  <div class="menu-foot">新文档直接建在这里</div>
+</div>
+
+<div id="helpOverlay" class="overlay" hidden>
+  <div class="help-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="help-head">
+      <h2 id="helpTitle">产品定义 · 操作</h2>
+      <button id="helpClose" class="icon-btn" aria-label="关闭">×</button>
+    </div>
+    <div class="help-cols">
+      <section>
+        <h3>结构</h3>
+        <dl>
+          <dt><kbd>Enter</kbd></dt><dd>新建同级，直接输入</dd>
+          <dt><kbd>Tab</kbd></dt><dd>新建子项，直接输入</dd>
+          <dt><kbd>Shift+Tab</kbd></dt><dd>提升一级，到顶层就独立成簇</dd>
+          <dt><kbd>Ctrl+]</kbd> / <kbd>Ctrl+[</kbd></dt><dd>缩进 / 提升</dd>
+          <dt><kbd>Alt+↑↓</kbd></dt><dd>同级挪位</dd>
+          <dt><kbd>Delete</kbd></dt><dd>删除；子节点留在原地升一级</dd>
+          <dt><kbd>Space</kbd></dt><dd>折叠 / 展开</dd>
+          <dt><kbd>C</kbd></dt><dd>蓝图注释框：选中节点就框住它们；空地按 C 在鼠标处新建</dd>
+        </dl>
+      </section>
+      <section>
+        <h3>画布</h3>
+        <dl>
+          <dt>拖顶节点</dt><dd>整簇跟着走</dd>
+          <dt>拖子节点</dt><dd>只能换父级，不能单独摆</dd>
+          <dt>拖空白</dt><dd>框选节点；框住注释框或框过标题栏也会选中它</dd>
+          <dt>双击空白</dt><dd>在那儿新建一个顶节点</dd>
+          <dt>中键 / 右键拖</dt><dd>平移画布</dd>
+          <dt><kbd>Ctrl</kbd>+滚轮</dt><dd>以指针为中心缩放</dd>
+          <dt><kbd>F</kbd></dt><dd>适应画布</dd>
+          <dt><kbd>Alt</kbd>+点连线</dt><dd>剪断：子节点带着子树独立成簇（按住 Alt 连线亮红）</dd>
+          <dt>拖注释框</dt><dd>框带着根在框里的簇一起走；右下角拖角拉伸</dd>
+          <dt>注释框色点</dt><dd>换颜色；选中后按 <kbd>Delete</kbd> 删框（节点全留）；双击框体或 <kbd>F2</kbd> 改名</dd>
+        </dl>
+      </section>
+      <section>
+        <h3>走位与编辑</h3>
+        <dl>
+          <dt><kbd>↑↓</kbd></dt><dd>上一个 / 下一个</dd>
+          <dt><kbd>←</kbd> / <kbd>→</kbd></dt><dd>折叠回父 / 展开进子</dd>
+          <dt><kbd>Shift</kbd>+点</dt><dd>加选 / 取消选中</dd>
+          <dt><kbd>F2</kbd> 或双击</dt><dd>编辑文字</dd>
+          <dt><kbd>N</kbd></dt><dd>打开 / 收起备注</dd>
+          <dt><kbd>Ctrl+Z</kbd></dt><dd>撤销</dd>
+        </dl>
+      </section>
+      <section>
+        <h3>审批 AI 的改动</h3>
+        <dl>
+          <dt>悬停节点</dt><dd>左上角浮出 <kbd>✓</kbd><kbd>✕</kbd>，就地决定</dd>
+          <dt>点了 ✓ / ✕</dt><dd>画布直接呈现生效后的样子；拒绝的当它不存在</dd>
+          <dt>再点一次</dt><dd>退回未决</dd>
+          <dt>框选 / <kbd>Shift</kbd> 点</dt><dd>批量选中，底部出现接受 / 拒绝</dd>
+          <dt><kbd>Enter</kbd> / <kbd>X</kbd></dt><dd>接受 / 拒绝（有批量选择时作用于全部）</dd>
+          <dt><kbd>↑↓</kbd></dt><dd>在左侧列表里逐条跳（先跳还没决定的）</dd>
+          <dt>点面板条目</dt><dd>画布滑过去把节点停在正中间；点画布节点，面板也指回那条</dd>
+          <dt>修改块</dt><dd>几处改动是同一条理由时打包成一块：整块点头，或展开逐条看；折叠状态不会自己变</dd>
+          <dt>备注行</dt><dd>程序自己逐行比对，只显示变了的行；<kbd>N</kbd> 看生效后的备注，新增行垫绿</dd>
+          <dt>已决</dt><dd>决定过的沉到底部，收着；展开点 <kbd>↩</kbd> 退回重审；面板关掉再开，决定不丢</dd>
+          <dt><kbd>Ctrl+Enter</kbd></dt><dd>全部接受（只做决定，画布即全生效的样子；写入另按按钮）</dd>
+          <dt><kbd>Esc</kbd></dt><dd>先不决定，一个字都不写</dd>
+        </dl>
+      </section>
+      <section>
+        <h3>文件</h3>
+        <dl>
+          <dt><kbd>Ctrl+S</kbd></dt><dd>保存（有文件就原地写）</dd>
+          <dt><kbd>Ctrl+Shift+S</kbd></dt><dd>另存为</dd>
+          <dt><kbd>Alt+O</kbd></dt><dd>打开，放进新标签</dd>
+          <dt><kbd>Alt+N</kbd></dt><dd>新建标签</dd>
+          <dt>拖 .proposal 进来</dt><dd>打开一份待审批的提案</dd>
+          <dt>左下角「让 AI 改」</dt><dd>点一下摊开：写要改什么，<kbd>Ctrl+Enter</kbd> 连文件的绝对路径和 propose 用法一起复制走</dd>
+          <dt><kbd>Alt</kbd>+<kbd>A</kbd></dt><dd>打开那张卡片；复制完它自己收起，<kbd>Ctrl+Z</kbd> 或「↩ 放回」把原话拿回来</dd>
+        </dl>
+      </section>
+      <section>
+        <h3>标签</h3>
+        <dl>
+          <dt>双击标签</dt><dd>改名（磁盘上的文件一起改）</dd>
+          <dt><kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd></dt><dd>跳到第 n 个标签</dd>
+          <dt><kbd>Ctrl+Alt</kbd>+<kbd>←</kbd><kbd>→</kbd></dt><dd>前后切换</dd>
+          <dt><kbd>Ctrl+F</kbd></dt><dd>搜索节点和备注</dd>
+        </dl>
+      </section>
+    </div>
+    <div class="help-foot">文件就是一份 Markdown：每个节点一行 <code>- </code>，两空格一级，节点下面以 <code>&gt;</code> 开头的行是它的备注。顶节点行尾的 <code>&lt;!--@x,y--&gt;</code> 是它摆在画布上的位置；蓝图注释框则是整行 <code>&lt;!--@comment:…--&gt;</code>，写在它框住的第一个簇上面，行尾列着框住了谁——AI 一读就知道归属。渲染时都看不见。一个标签就是一个文件。</div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="dragHint" hidden></div>
+<input type="file" id="filePick" accept=".md,.markdown,.mind,.txt,text/markdown,text/plain" multiple hidden>
+
+<script>
+// 每次加载都重新取一份代码。file:// 下浏览器会缓存子资源，改了代码按 F5 看不到变化，
+// 这件事已经害人一次了——加个时间戳，永远不会再拿旧的。
+(function () {
+  var files = ['platform.js', 'data.js', 'view.js', 'export.js', 'docs.js', 'app.js', 'highlight.js', 'note.js', 'handoff.js', 'proposal.js', 'interact.js'];
+  var v = Date.now();
+  files.forEach(function (name) {
+    var s = document.createElement('script');
+    s.src = name + '?v=' + v;
+    s.async = false;            // 保持顺序，且此时 body 已经解析完
+    document.body.appendChild(s);
+  });
+})();
+</script>
+</body>
+</html>
