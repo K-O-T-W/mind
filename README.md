@@ -28,11 +28,14 @@ Windows 和 macOS 都有双击入口。它起一个只监听本机的服务，�
 
 - 第一次如果被 Gatekeeper 拦住：右键 →「打开」，或者在终端执行一次
   `chmod +x Mind.command`。
+- 如果双击后是文本编辑器打开：说明可执行位丢了，先 `chmod +x Mind.command`。
 - 需要 Python 3.9 以上。macOS 第一次运行 `python3` 会提示安装 Command Line Tools；
   也可以 `brew install python`。
 - 换端口：`./Mind.command 8766`。
 - 想绑定工作文件夹、按 `⌘S` 原地写回 `.md`，用 **Chrome 或 Edge**。Safari 不支持
   File System Access，保存会退化成下载文件（功能不丢，只是多一步）。
+- 第一次让「让 AI 改」去找文件时，macOS 可能会问终端能不能访问「文稿 / 桌面 / 下载」。
+  允许它，`/api/find` 才能按文件名 + 树指纹找到 `.md`；拒绝也能用，手填一次绝对路径即可。
 
 手动起也行，在工具目录：
 
