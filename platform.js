@@ -23,6 +23,7 @@
     const texts = [];
     while (walker.nextNode()) texts.push(walker.currentNode);
     for (const node of texts) {
+      if (node.parentElement && node.parentElement.closest('.keep-ctrl')) continue;
       if (node.nodeValue && node.nodeValue.includes('Ctrl')) {
         node.nodeValue = node.nodeValue.replace(/Ctrl/g, '⌘');
       }

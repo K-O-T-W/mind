@@ -85,6 +85,9 @@ python server.py 8765 --bind 127.0.0.1 --directory .
 
 > 下表写的是 Windows 的 `Ctrl` / `Alt`；macOS 上分别是 `⌘` / `Option`。
 > 打开页面后，工具栏和帮助层里的提示会自动换成当前平台的写法。
+>
+> 例外：macOS 的 `⌘+]` / `⌘+[` 会被 Chrome 当成前进/后退，所以缩进 / 提升请用
+> `Ctrl+]` / `Ctrl+[`，或者直接 `Tab` / `Shift+Tab`。
 
 ### 结构
 
