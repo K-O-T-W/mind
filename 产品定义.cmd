@@ -1,5 +1,5 @@
 @echo off
-rem Creator mind -- double-click launcher. The real work is in mind.ps1.
+rem Mind -- double-click launcher. The real work is in mind.ps1.
 chcp 65001 >nul
 setlocal
 set "SCRIPT=%~dp0mind.ps1"
