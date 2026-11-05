@@ -11,49 +11,41 @@
 
 ## 启动
 
-Windows 和 macOS 都有双击入口。它起一个只监听本机的服务，再把浏览器打开。
-那个终端窗口就是开关：关掉它服务就停。已经在跑的时候再双击，只会把浏览器切过去，
-不会再开一个。
+Mind 已经整合进 Toolset。先启动 Toolset，再在首页点「Mind · 树形思维」；
+页面地址是 <http://127.0.0.1:8770/tools/mind/>。Toolset 的终端窗口就是总开关，
+关掉它所有工具页都会断开。
 
 ### Windows
 
-**双击 `产品定义.cmd`。**
-
-端口默认 8765；被别的程序占着会直接说出来，想换：`产品定义.cmd -Port 8766`
-（`mind.ps1` 开头也能改默认值）。
+**双击 `产品定义.cmd`**（它现在只是确保 Toolset 在跑，然后打开 Mind 页面）。
+`-Port` 参数保留兼容，但端口由 Toolset 统一管理（默认 8770）。
 
 ### macOS
 
-**双击 `Mind.command`。**
+**双击 `Mind.command`**，同样是打开 Toolset 的 Mind 页面。
 
 - 第一次如果被 Gatekeeper 拦住：右键 →「打开」，或者在终端执行一次
   `chmod +x Mind.command`。
 - 如果双击后是文本编辑器打开：说明可执行位丢了，先 `chmod +x Mind.command`。
-- 需要 Python 3.9 以上。macOS 第一次运行 `python3` 会提示安装 Command Line Tools；
+- 需要 Python 3.10 以上。macOS 第一次运行 `python3` 会提示安装 Command Line Tools；
   也可以 `brew install python`。
-- 换端口：`./Mind.command 8766`。
 - 想绑定工作文件夹、按 `⌘S` 原地写回 `.md`，用 **Chrome 或 Edge**。Safari 不支持
   File System Access，保存会退化成下载文件（功能不丢，只是多一步）。
 - 第一次让「让 AI 改」去找文件时，macOS 可能会问终端能不能访问「文稿 / 桌面 / 下载」。
-  允许它，`/api/find` 才能按文件名 + 树指纹找到 `.md`；拒绝也能用，手填一次绝对路径即可。
+  允许它，Toolset 的 `/tools/mind/api/find` 才能按文件名 + 树指纹找到 `.md`；
+  拒绝也能用，手填一次绝对路径即可。
 
-手动起也行，在工具目录：
+手动起也行，在 Toolset 目录：
 
 ```bash
-# macOS / Linux
-python3 server.py 8765 --bind 127.0.0.1 --directory .
-
-# Windows
-python server.py 8765 --bind 127.0.0.1 --directory .
+python3 server.py
 ```
 
-用老的 `python -m http.server …` 也能看，但它只有 GET：审批完的提案清不出
-`proposals/`，换浏览器会把已经生效的提案再弹一遍（下面「审批完自动清」）。
+打开 Toolset 首页后点 Mind。不要再单独运行旧的 `server.py`；Mind 的静态页面、
+找文件接口和清提案接口现在都由 Toolset 统一提供。
 
-打开 <http://127.0.0.1:8765/>。
-
-也可以直接双击 `index.html`（`file://` 打开）。两种方式功能一样，审批在两种下都会自己冒出来；
-只是 `file://` 下浏览器的文件系统 API 会被拦，保存会退化成下载 `.md` 文件——所以才要那个小服务。
+也可以直接双击 `index.html`（`file://` 打开）。功能基本一样，审批在两种下都会自己冒出来；
+只是 `file://` 下浏览器的文件系统 API 会被拦，保存会退化成下载 `.md` 文件——所以才要 Toolset 服务。
 
 第一次打开自带一棵示例树。点标签栏的 `+`（或 `Alt+N`）开新标签，回车直接写。
 
@@ -246,7 +238,7 @@ Typora）都会把它当成「列表项里的代码块」：有语法高亮、�
 节点文字本身以 `- ` 或 `>` 开头也不用转义：保存时每行前面都有 `- `，解析只吃掉第一个
 列表符号，剩下的原样保留。文件开头没有节点可挂的 `>` 会当成普通节点。
 
-多个顶层节点是正常的，不再被强行收进一个以文件名命名的根里。
+多个顶层节点是正常的，不再被强行收进一个以文件名命名的根里。打开旧文件时，如果最外层正好是那样一层（唯一顶节点、名字就是文件名、底下有子节点、自己没写备注），会自动拆掉；文件名只留在标签栏和磁盘上。文件开头如果是一行 `# 文件名`，也当成标题跳过，不会变成节点。
 
 ## AI 改这份文件
 
@@ -430,8 +422,8 @@ python propose.py clean 产品定义.md           # 清掉待审批的提案和�
 ### 审批完自动清
 
 决定写盘（或全部放弃）之后，页面会把 `proposals/` 里那份 `.proposal` 从磁盘上删掉，
-index.txt 与 pending.js 同步更新——和 `propose.py clean` 做的是同一件事。本地服务走
-`server.py` 的 DELETE（它就是 http.server 加这一个方法，GET 行为一模一样）；绑定文件夹
+index.txt 与 pending.js 同步更新——和 `propose.py clean` 做的是同一件事。Toolset 走
+`tool.py` 的 DELETE（页面仍是相对路径 `proposals/...`，由 Toolset 统一转发）；绑定文件夹
 走文件句柄删同目录的兄弟文件。`file://` 直接打开没有可写的通道，删不了，靠浏览器记
 「已处理」挡重复弹出。
 
@@ -466,10 +458,11 @@ index.txt 与 pending.js 同步更新——和 `propose.py clean` 做的是同�
 | `proposal.js` | 提案：解析、预览、修改块、逐条/批量接受拒绝、已决与退回、宽度把手、发现与轮询 |
 | `interact.js` | 指针手势、搜索、菜单、工具栏接线 |
 | `propose.py` | 给 AI 用的命令行：读大纲、校验改动、写提案 |
-| `server.py` | 本地服务：http.server + 提案 DELETE，审批完的提案自动出目录；`/api/where`、`/api/find`（文件名 + 树指纹）、`/api/check` 供提示词取路径；所有响应带 no-cache，正常刷新必拿最新 |
+| `tool.py` | Toolset 后端：`api/where`、`api/find`（文件名 + 树指纹）、`api/check`，以及审批完清掉 `proposals/` 的 DELETE；静态文件由 Toolset 统一服务 |
+| `tool.json` | Toolset 首页读的工具说明 |
 | `产品定义.cmd` | Windows 双击入口：挑 pwsh / Windows PowerShell，把活交给 `mind.ps1` |
-| `mind.ps1` | Windows：起服务、等它就绪、开浏览器；窗口关掉服务就停 |
-| `Mind.command` | macOS 双击入口：检查端口 / Python 3.9+，起服务并 `open` 浏览器 |
+| `mind.ps1` | Windows：确保 Toolset 在跑，打开 `/tools/mind/` |
+| `Mind.command` | macOS 双击入口：确保 Toolset 在跑，打开 `/tools/mind/` |
 
 ## 已验证的行为
 
@@ -531,7 +524,7 @@ index.txt 与 pending.js 同步更新——和 `propose.py clean` 做的是同�
 - 无扩展时的保存退化为下载；`localStorage` 草稿恢复。
 - 让 AI 改：左下角先是 30px 的胶囊，点开成 412px 卡片（`Ctrl+Enter` 复制、`Esc` 收起、
   再点胶囊收起）；复制后卡片自动收起、胶囊闪成绿对勾「已复制」，剪贴板里的委托 1440 字符，
-  目标文件与 `propose.py` 都是**绝对路径**（`/api/find` 在磁盘上按名字 + 树指纹认出了
+  目标文件与 `propose.py` 都是**绝对路径**（`api/find` 在磁盘上按名字 + 树指纹认出了
   `产品定义.md`，`tree` / `write` 两条命令里也是完整路径），没有
   「按文件名找一下」这类退路；复制后输入框清空，重开卡片按 `Ctrl+Z` 或点「↩ 放回」原话回来
   且光标在末尾；复制完再打新字，`Ctrl+Z` 不会把新字撤成空白再翻出旧话；路径行点一下可变，

@@ -61,11 +61,30 @@ PROPOSAL_DIR = HERE / "proposals"
 
 # ------------------------------------------------------------------ outline
 
-def parse_outline(text):
+def title_key(value):
+    text = str(value or "").strip().lower()
+    text = re.sub(r"\.(md|markdown|mind|txt)$", "", text)
+    return re.sub(r"^#+\s*", "", text)
+
+
+def parse_outline(text, title=None):
     rows = []
     fence = None
+    key = title_key(title)
 
-    for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+    lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    if key:
+        for i, line in enumerate(lines):
+            if not line.strip():
+                continue
+            if re.match(r"^<!--@comment:.*-->\s*$", line.strip()):
+                continue
+            m = re.match(r"^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$", line)
+            if m and title_key(m.group(1)) == key:
+                del lines[i]
+            break
+
+    for line in lines:
         if fence is not None:
             if not line.strip():
                 rows[-1]["note"].append("")
@@ -144,6 +163,12 @@ def parse_outline(text):
         else:
             root["children"].append(node)
         stack.append(node)
+
+    if key and len(root["children"]) == 1:
+        only = root["children"][0]
+        if (not only["note"].strip() and only["children"]
+                and title_key(only["text"]) == key):
+            root["children"] = only["children"]
 
     return root
 
@@ -434,7 +459,7 @@ def read(path):
 
 
 def cmd_tree(doc):
-    root = parse_outline(read(doc))
+    root = parse_outline(read(doc), doc.stem)
     width = max((len(p) for p, _, _ in walk_nodes(root)), default=1)
     for path, node, _ in walk_nodes(root):
         text = node["text"] or "未命名"
@@ -457,7 +482,7 @@ def op_line(op):
 
 
 def cmd_write(doc, ops_path, sibling=False):
-    root = parse_outline(read(doc))
+    root = parse_outline(read(doc), doc.stem)
     ops, groups = parse_ops(read(ops_path) if ops_path != "-" else sys.stdin.read())
     if not ops:
         raise ValueError("操作清单是空的")
@@ -509,12 +534,12 @@ def cmd_write(doc, ops_path, sibling=False):
     if sibling:
         print("打开这份 .md 的产品定义窗口，点右上角的「待审批」。")
     else:
-        print(f"服务已开在 127.0.0.1:8765 时，打开「{doc.stem}」就会亮起待审批。")
+        print(f"Toolset 开在 127.0.0.1:8770 时，打开「{doc.stem}」就会亮起待审批。")
     return 0
 
 
 def cmd_check(doc, ops_path):
-    root = parse_outline(read(doc))
+    root = parse_outline(read(doc), doc.stem)
     ops, groups = parse_ops(read(ops_path) if ops_path != "-" else sys.stdin.read())
     problems = validate(root, ops)
     for p in problems:

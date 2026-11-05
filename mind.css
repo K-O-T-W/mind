@@ -93,6 +93,8 @@ svg { display: block; }
   align-items: center;
   gap: 8px;
   padding: 0 4px 0 2px;
+  color: inherit;
+  text-decoration: none;
 }
 .brand .mark { width: 20px; height: 20px; color: var(--accent); }
 .brand-name {

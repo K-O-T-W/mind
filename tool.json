@@ -1,0 +1,12 @@
+{
+  "id": "mind",
+  "name": "Mind · 树形思维",
+  "description": "把想法理成树，存档就是一份 Markdown。AI 的改动要人点头才落盘。",
+  "version": "1.0.0",
+  "icon": "icon.svg",
+  "color": "#7aa2f7",
+  "static": ".",
+  "entry": "index.html",
+  "order": 20,
+  "tags": ["Markdown", "树形笔记", "本地文件"]
+}

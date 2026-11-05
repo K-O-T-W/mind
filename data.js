@@ -39,18 +39,69 @@ function blankDoc() {
   return root;
 }
 
+// 文件名只负责标签和磁盘文件，不是大纲的一部分。旧版把它当成根节点存了
+// 一层，读回来时拆掉：只认「唯一顶节点、名字等于文件名、有子节点、没有
+// 备注」这种形状。坐标不参与判断——旧文件第一次打开后会被补上坐标，不能
+// 因此就漏掉。propose.py 的 parse_outline 用的是同一套规则，否则树指纹
+// 会对不上。
+function titleKey(value) {
+  return String(value == null ? '' : value)
+    .trim()
+    .replace(/\.(md|markdown|mind|txt)$/i, '')
+    .replace(/^#+\s*/, '')
+    .toLowerCase();
+}
+
+function isTitleNode(node, title) {
+  const key = titleKey(title);
+  return !!key
+    && !!node
+    && !String(node.note || '').trim()
+    && node.children.length > 0
+    && titleKey(node.text) === key;
+}
+
+function dropTitleRoot(root, title) {
+  if (!root || !root.virt || root.children.length !== 1) return root;
+  const only = root.children[0];
+  if (!isTitleNode(only, title)) return root;
+  root.children = only.children;
+  return root;
+}
+
+// A leading "# 文件名" is a title, not a node. AI-written files often carry
+// it; the outline itself starts with the list below it.
+function isTitleHeading(line, title) {
+  const key = titleKey(title);
+  if (!key) return false;
+  const m = String(line).match(/^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$/);
+  return !!m && titleKey(m[1]) === key;
+}
+
+function stripTitleHeading(text, title) {
+  const lines = String(text || '').split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+    if (/^<!--@comment:.*-->\s*$/.test(line.trim())) continue;
+    if (isTitleHeading(line, title)) lines.splice(i, 1);
+    break;
+  }
+  return lines.join('\n');
+}
+
 // Older saves and loose trees come back as a single top-level node; wrap them
 // so the container invariant always holds.
-function asRoot(node) {
+function asRoot(node, title) {
   if (!node) return blankDoc();
   if (node.virt) {
     if (Array.isArray(node.comments)) assignCommentIds(node.comments);
-    return node;
+    return dropTitleRoot(node, title);
   }
   node.pos = node.pos || { x: 0, y: 0 };
   const root = newRoot();
   root.children = [node];
-  return root;
+  return dropTitleRoot(root, title);
 }
 
 function adoptId(id) {
@@ -213,7 +264,8 @@ function settleY(node) {
 const POS_RE = /^(.*?)\s*<!--@(-?\d+),(-?\d+)-->\s*$/;
 
 function parseOutline(text, title) {
-  const lines = String(text == null ? '' : text).replace(/\r\n?/g, '\n').split('\n');
+  const source = stripTitleHeading(String(text == null ? '' : text).replace(/\r\n?/g, '\n'), title);
+  const lines = source.split('\n');
   const rows = [];
   const comments = [];
   let fence = null;          // open fenced block inside a note
@@ -308,7 +360,9 @@ function parseOutline(text, title) {
     stack.push(node);
   }
 
-  root.children = roots;
+  const top = { virt: true, children: roots };
+  dropTitleRoot(top, title);
+  root.children = top.children;
   root.comments = comments;
   return root;
 }
@@ -465,7 +519,7 @@ function snapshot() {
 function restoreSnapshot(json) {
   try {
     const data = JSON.parse(json);
-    mind.root = asRoot(unpackNode(data));
+    mind.root = asRoot(unpackNode(data), mind && ((mind.src && mind.src.name) || mind.loose || mind.name));
     reindex();
     return true;
   } catch {

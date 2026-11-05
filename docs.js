@@ -167,6 +167,7 @@ function activateDoc(doc, opts = {}) {
   }
 
   mind = doc;
+  dropTitleRoot(mind.root, (mind.src && mind.src.name) || mind.loose || mind.name);
   resetViewDom();
   reindex();
   if (typeof resetProposalState === 'function') resetProposalState();
@@ -848,9 +849,10 @@ function scheduleAutosave() {
 
 function unpackDoc(raw) {
   if (!raw) return null;
+  const title = (raw.src && raw.src.name) || raw.loose || raw.name;
   const doc = makeDoc({
     name: raw.name || '未命名',
-    root: raw.tree ? asRoot(unpackNode(raw.tree)) : blankDoc(),
+    root: raw.tree ? asRoot(unpackNode(raw.tree), title) : blankDoc(),
     src: raw.src || null,
     savedAt: raw.at || 0,
     view: raw.view || null,
@@ -888,7 +890,7 @@ async function restoreWorkspace() {
   if (legacy && legacy.tree) {
     const doc = makeDoc({
       name: legacy.name || '未命名',
-      root: asRoot(unpackNode(legacy.tree)),
+      root: asRoot(unpackNode(legacy.tree), legacy.name),
       savedAt: legacy.at || 0,
     });
     docs.push(doc);
