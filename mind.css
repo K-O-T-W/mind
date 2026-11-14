@@ -2005,9 +2005,8 @@ body.dragging-node, body.dragging-node * { cursor: grabbing !important; }
   background: color-mix(in srgb, var(--c) 12%, rgba(16, 19, 24, .18));
   transition: border-color .12s, background .12s, box-shadow .12s;
 }
-.comment:hover {
-  border-color: color-mix(in srgb, var(--c) 74%, transparent);
-}
+/* 不做整框 hover 提亮：标题条盖住顶部，只有底部和侧边细线会亮，
+   鼠标移进来像闪一下。选中态已经足够区分。 */
 /* 选中要一眼看出来：实色描边 + 外圈光，和节点选中同一个语言。
    注释框永远在节点下面（节点 z-index: 1），所以描边只加在框的外沿。 */
 .comment.selected {
@@ -2062,9 +2061,8 @@ body.dragging-node, body.dragging-node * { cursor: grabbing !important; }
   position: absolute;
   inset: 25px 0 0 0;
   border-radius: 0 0 6px 6px;
-  cursor: grab;
+  cursor: default;
 }
-.comment-body:active { cursor: grabbing; }
 .comment-grip {
   position: absolute;
   right: -2px;
@@ -2122,7 +2120,6 @@ body.dragging-node, body.dragging-node * { cursor: grabbing !important; }
 .comment.light {
   border-color: color-mix(in srgb, var(--c) 64%, transparent);
 }
-.comment.light:hover { border-color: color-mix(in srgb, var(--c) 86%, transparent); }
 .comment.light.selected {
   border-color: color-mix(in srgb, var(--c) 86%, transparent);
   box-shadow:

@@ -1,6 +1,7 @@
 // Wiring: pointer gestures, search, files, menus, toolbar.
 
 let lastTap = { id: null, at: 0, x: 0, y: 0 };
+let bodyCommentPress = null;
 
 function bindUI() {
   document.querySelectorAll('[data-act]').forEach((btn) => {
@@ -170,6 +171,8 @@ function runAction(act, btn) {
     case 'search': openSearch(); break;
     case 'fit': fit(); break;
     case 'export': toggleExportMenu(btn); break;
+    case 'copy': if (typeof copySelection === 'function') copySelection(); break;
+    case 'paste': if (typeof pasteClipboard === 'function') pasteClipboard(); break;
     case 'help': openHelp(); break;
     case 'review': if (typeof openReview === 'function') openReview(); break;
     case 'scan': if (typeof scanProposals === 'function') scanProposals(true); break;
@@ -222,10 +225,14 @@ function onPointerDown(e) {
     }
   }
 
-  // 蓝图注释框：点标题/框体拖整框带节点，右下角拉伸，色点开色板。
+  // 蓝图注释框：只有标题条能拖整框带节点，右下角拉伸，色点开色板。
+  // 框体内部不接拖动——那一块要让给画布框选，否则框里的节点永远选不上。
   // 删除走“选中 + Delete”，不在框上放 ×——和节点的选中手感保持一致。
   const cEl = e.target.closest('.comment');
-  if (cEl && e.button === 0 && !mind.review) {
+  const cHead = e.target.closest('.comment-head');
+  const cGrip = e.target.closest('.comment-grip');
+  bodyCommentPress = null;
+  if (cEl && e.button === 0 && !mind.review && (cHead || cGrip)) {
     const c = docComments().find((x) => x.id === cEl.dataset.id);
     if (!c) return;
     blankClickOk = false;
@@ -275,6 +282,16 @@ function onPointerDown(e) {
     // 真拖起来（过了阈值）再抓。
     focusStage();
     return;
+  }
+
+  // 框体内部：单击选中框交给 onClick；按下这一刻先不选中。
+  // 否则一按下就亮选中描边，拖动框选的第一帧又取消，看起来就是“闪一下”。
+  // 这里只记下起点，让 marquee 延迟抓指针（双击改标题要保住 body 这个 target）。
+  const cBody = e.target.closest('.comment-body');
+  if (cEl && cBody && e.button === 0 && !mind.review && !e.shiftKey) {
+    if (mind.editingId) commitEdit();
+    bodyCommentPress = cEl.dataset.id;
+    blankClickOk = false;
   }
 
   // Verdict buttons ride on the node itself.
@@ -359,13 +376,19 @@ function onPointerDown(e) {
 
   // Empty canvas: drag a box to pick several nodes — also while a proposal is
   // open, because deciding a batch is the whole point of picking them.
+  // Inside a comment body we do NOT capture the pointer on press: the browser
+  // must keep the dblclick target on the body so title editing still works.
+  // Capture starts only once the drag actually moves (see updateMarquee).
+  const bodyStart = !!bodyCommentPress;
   mind.marquee = {
     x0: e.clientX, y0: e.clientY, moved: false,
     add: e.shiftKey,
     base: new Set(mind.selection),
+    bodyStart,
+    captured: !bodyStart,
     hits: [],
   };
-  grabPointer(e.pointerId);
+  if (!bodyStart) grabPointer(e.pointerId);
 }
 
 function onPointerMove(e) {
@@ -558,8 +581,10 @@ function onPointerUp(e) {
       skipClickUntil = performance.now() + 200;
       blankClickOk = false;
     } else {
+      // No movement: a normal click, which may select the comment body in onClick.
       blankClickOk = true;
     }
+    bodyCommentPress = null;
     mind.marquee = null;
   }
 
@@ -584,6 +609,10 @@ function updateMarquee(e) {
 
   if (!m.moved && Math.abs(x1 - x0) + Math.abs(y1 - y0) <= 4) return;
   m.moved = true;
+  if (!m.captured) {
+    m.captured = true;
+    grabPointer(e.pointerId);
+  }
   stage.classList.add('marquee-on');
 
   const left = Math.min(x0, x1);
@@ -666,7 +695,29 @@ function onClick(e) {
     select(node.id, { ensure: false });
     return;
   }
-  if (blankClickOk && !e.shiftKey) clearSelection();
+  if (blankClickOk && !e.shiftKey) {
+    // Fallback: a simple click in the body without the pointerdown handshake
+    // still selects the frame. A real drag sets blankClickOk=false.
+    const cBody = e.target.closest('.comment-body');
+    if (cBody && !mind.review) {
+      const cEl = cBody.closest('.comment');
+      const c = cEl && docComments().find((x) => x.id === cEl.dataset.id);
+      if (c) {
+        mind.selectedCommentId = c.id;
+        mind.selection = new Set();
+        mind.selectedId = null;
+        renderComments();
+        paintSelection();
+        drawLinks();
+        if (typeof syncNotePanel === 'function') syncNotePanel();
+        updateStatus();
+        focusStage();
+        blankClickOk = false;
+        return;
+      }
+    }
+    clearSelection();
+  }
   blankClickOk = false;
 }
 

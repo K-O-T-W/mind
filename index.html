@@ -49,6 +49,17 @@
   <span class="vsep"></span>
 
   <div class="group">
+    <button class="icon-btn" data-act="copy" title="复制子树（含所有子节点）  Ctrl+C" aria-label="复制">
+      <svg viewBox="0 0 16 16"><rect x="5.1" y="5.1" width="7.8" height="7.8" rx="1.6"/><path d="M10.9 5.1V3.7A1.6 1.6 0 0 0 9.3 2.1H4.7A1.6 1.6 0 0 0 3.1 3.7v4.6a1.6 1.6 0 0 0 1.6 1.6h.4"/></svg>
+    </button>
+    <button class="icon-btn" data-act="paste" title="粘贴到选中节点下  Ctrl+V" aria-label="粘贴">
+      <svg viewBox="0 0 16 16"><rect x="3.1" y="3.4" width="9.8" height="10.4" rx="1.6"/><path d="M5.9 3.4V2.5h4.2v.9"/><path d="M5.9 7.2h4.2M5.9 9.6h4.2"/></svg>
+    </button>
+  </div>
+
+  <span class="vsep"></span>
+
+  <div class="group">
     <button class="icon-btn" data-act="search" title="搜索  Ctrl+F" aria-label="搜索">
       <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.1"/><path d="m10.2 10.2 3.6 3.6"/></svg>
     </button>
@@ -236,7 +247,7 @@
           <dt><kbd>Shift+Tab</kbd></dt><dd>提升一级，到顶层就独立成簇</dd>
           <dt><kbd class="keep-ctrl">Ctrl+]</kbd> / <kbd class="keep-ctrl">Ctrl+[</kbd></dt><dd>缩进 / 提升</dd>
           <dt><kbd>Alt+↑↓</kbd></dt><dd>同级挪位</dd>
-          <dt><kbd>Delete</kbd></dt><dd>删除；子节点留在原地升一级</dd>
+          <dt><kbd>Delete</kbd></dt><dd>删除；子节点留在原地升一级。删完不自动跳到别的节点</dd>
           <dt><kbd>Space</kbd></dt><dd>折叠 / 展开</dd>
           <dt><kbd>C</kbd></dt><dd>蓝图注释框：选中节点就框住它们；空地按 C 在鼠标处新建</dd>
         </dl>
@@ -252,7 +263,7 @@
           <dt><kbd>Ctrl</kbd>+滚轮</dt><dd>以指针为中心缩放</dd>
           <dt><kbd>F</kbd></dt><dd>适应画布</dd>
           <dt><kbd>Alt</kbd>+点连线</dt><dd>剪断：子节点带着子树独立成簇（按住 Alt 连线亮红）</dd>
-          <dt>拖注释框</dt><dd>框带着根在框里的簇一起走；右下角拖角拉伸</dd>
+          <dt>拖注释框标题条</dt><dd>只有标题条能拖；框体内部拖动是框选节点（单击框体仍选中框）。框带着根在框里的簇一起走；右下角拖角拉伸</dd>
           <dt>注释框色点</dt><dd>换颜色；选中后按 <kbd>Delete</kbd> 删框（节点全留）；双击框体或 <kbd>F2</kbd> 改名</dd>
         </dl>
       </section>
@@ -264,6 +275,8 @@
           <dt><kbd>Shift</kbd>+点</dt><dd>加选 / 取消选中</dd>
           <dt><kbd>F2</kbd> 或双击</dt><dd>编辑文字</dd>
           <dt><kbd>N</kbd></dt><dd>打开 / 收起备注</dd>
+          <dt><kbd>Ctrl+C</kbd></dt><dd>复制选中的节点：每个根连同整棵子树，写成可直接发给 AI 的 Markdown；多选时按各自的根平铺</dd>
+          <dt><kbd>Ctrl+V</kbd></dt><dd>把刚复制的那串挂到当前选中节点下面；几个根就并成几个子块</dd>
           <dt><kbd>Ctrl+Z</kbd></dt><dd>撤销</dd>
         </dl>
       </section>
@@ -318,7 +331,7 @@
 // 每次加载都重新取一份代码。file:// 下浏览器会缓存子资源，改了代码按 F5 看不到变化，
 // 这件事已经害人一次了——加个时间戳，永远不会再拿旧的。
 (function () {
-  var files = ['platform.js', 'data.js', 'view.js', 'export.js', 'docs.js', 'app.js', 'highlight.js', 'note.js', 'handoff.js', 'proposal.js', 'interact.js'];
+  var files = ['platform.js', 'data.js', 'view.js', 'export.js', 'docs.js', 'app.js', 'highlight.js', 'note.js', 'handoff.js', 'proposal.js', 'clipboard.js', 'interact.js'];
   var v = Date.now();
   files.forEach(function (name) {
     var s = document.createElement('script');

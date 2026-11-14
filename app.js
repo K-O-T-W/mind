@@ -304,6 +304,9 @@ function moveSibling(node, dir) {
 // Removing a node hands its children back to the parent instead of taking
 // them down with it. A deleted cluster's children therefore stay where they
 // were drawn, as independent top-level nodes.
+//
+// Returns the first promoted child, or null. Deliberately never a sibling:
+// deleting must not yank selection to some far-away cluster.
 function unlinkNode(node) {
   const parent = locate(node);
   if (!parent) return null;
@@ -317,7 +320,7 @@ function unlinkNode(node) {
     }
     parent.children.splice(i, 0, ...kids);
   }
-  return kids[0] || parent.children[i] || parent.children[i - 1] || null;
+  return kids[0] || null;
 }
 
 function locate(node) {
@@ -337,13 +340,17 @@ function deleteNode(node, snap) {
   if (!node || !locate(node)) return;
   pushUndo(snap);
   const next = unlinkNode(node);
+  // A promoted child sits where its parent was, so selecting it is safe.
+  // With no child left there is nothing nearby worth selecting: clear instead
+  // of grabbing a sibling elsewhere and panning the camera to it.
   mind.selectedId = next && next.id ? next.id : null;
   mind.selection = mind.selectedId ? new Set([mind.selectedId]) : new Set();
+  mind.selectedCommentId = null;
   mind.dirty = true;
   reindex();
   render({ animate: true, dur: 170 });
-  if (mind.selectedId) select(mind.selectedId);
-  updateStatus();
+  if (next && next.id) select(next.id, { ensure: false });
+  else clearSelection();
   scheduleAutosave();
 }
 
@@ -354,19 +361,19 @@ function deleteSelection() {
   if (!picked.length) return false;
   pushUndo();
   picked.sort((a, b) => b.depth - a.depth);
-  let next = null;
   for (const node of picked) {
     if (!locate(node)) continue;
-    const after = unlinkNode(node);
-    if (after) next = after;
+    unlinkNode(node);
   }
-  mind.selectedId = next && next.id ? next.id : (mind.root.children[0] || {}).id || null;
-  mind.selection = mind.selectedId ? new Set([mind.selectedId]) : new Set();
+  // Multi-delete is not a cursor move: leave nothing selected rather than
+  // jumping to the first surviving cluster.
+  mind.selectedId = null;
+  mind.selection = new Set();
+  mind.selectedCommentId = null;
   mind.dirty = true;
   reindex();
   render({ animate: true, dur: 170 });
-  if (mind.selectedId) select(mind.selectedId);
-  updateStatus();
+  clearSelection();
   scheduleAutosave();
   return true;
 }
@@ -680,6 +687,16 @@ function onKeyDown(e) {
 
   if (mod) {
     const k = e.key.toLowerCase();
+    if (k === 'c') {
+      e.preventDefault();
+      if (!e.repeat && typeof copySelection === 'function') copySelection();
+      return;
+    }
+    if (k === 'v') {
+      e.preventDefault();
+      if (!e.repeat && typeof pasteClipboard === 'function') pasteClipboard();
+      return;
+    }
     if (k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if (k === 'y') { e.preventDefault(); redo(); return; }
     if (k === 'enter') { e.preventDefault(); addChild(selectedNode()); return; }

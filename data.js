@@ -400,40 +400,45 @@ function parseOutline(text, title) {
 
 // Every line carries a "- " bullet, so node text may start with "- ", "* " or
 // ">" and still read back unchanged. No escaping needed on the way out.
+//
+// withPos: 只有整份存档才给顶节点写 <!--@x,y-->。复制出去的片段不写——
+// 那段文本是拿去读、拿去喂 AI 的，画布坐标是内部事务。
+function writeNodeLines(node, depth, out, withPos) {
+  let text = String(node.text || '').replace(/[\r\n]+/g, ' ').trim();
+  if (!text) text = '未命名';
+  let line = '  '.repeat(depth) + '- ' + text;
+  if (withPos && depth === 0 && node.pos) {
+    line += ` <!--@${Math.round(node.pos.x)},${Math.round(node.pos.y)}-->`;
+  }
+  out.push(line);
+  const note = String(node.note || '').replace(/\r\n?/g, '\n');
+  if (note.trim()) {
+    const indent = '  '.repeat(depth + 1);
+    let fence = null;
+    for (const ln of note.split('\n')) {
+      const m = ln.match(/^[ \t]*(`{3,}|~{3,})(.*)$/);
+      if (fence) {
+        // Code lines stay bare: no "> " prefix, so every Markdown reader
+        // sees a real fenced block nested in the list item.
+        out.push(ln ? indent + ln : '');
+        if (m && m[1][0] === fence.ch && m[1].length >= fence.len && !m[2].trim()) fence = null;
+        continue;
+      }
+      if (m) {
+        fence = { ch: m[1][0], len: m[1].length };
+        out.push(indent + ln);
+        continue;
+      }
+      out.push(indent + (ln ? '> ' + ln : '>'));
+    }
+  }
+  for (const child of node.children) writeNodeLines(child, depth + 1, out, withPos);
+}
+
 function toOutline(root) {
   const start = root || (mind && mind.root);
   const out = [];
-  const walk = (node, depth) => {
-    let text = String(node.text || '').replace(/[\r\n]+/g, ' ').trim();
-    if (!text) text = '未命名';
-    let line = '  '.repeat(depth) + '- ' + text;
-    if (depth === 0 && node.pos) {
-      line += ` <!--@${Math.round(node.pos.x)},${Math.round(node.pos.y)}-->`;
-    }
-    out.push(line);
-    const note = String(node.note || '').replace(/\r\n?/g, '\n');
-    if (note.trim()) {
-      const indent = '  '.repeat(depth + 1);
-      let fence = null;
-      for (const ln of note.split('\n')) {
-        const m = ln.match(/^[ \t]*(`{3,}|~{3,})(.*)$/);
-        if (fence) {
-          // Code lines stay bare: no "> " prefix, so every Markdown reader
-          // sees a real fenced block nested in the list item.
-          out.push(ln ? indent + ln : '');
-          if (m && m[1][0] === fence.ch && m[1].length >= fence.len && !m[2].trim()) fence = null;
-          continue;
-        }
-        if (m) {
-          fence = { ch: m[1][0], len: m[1].length };
-          out.push(indent + ln);
-          continue;
-        }
-        out.push(indent + (ln ? '> ' + ln : '>'));
-      }
-    }
-    for (const child of node.children) walk(child, depth + 1);
-  };
+  const walk = (node, depth) => writeNodeLines(node, depth, out, true);
   // 蓝图注释框不是孤儿标注：它框住谁（簇的根节点中心在框内），就写在那个簇的
   // 上面一层，并把框住的名字列进行尾——AI 读文件时，注释就是那一块的节标题。
   // 归属每次存档现算，不存在过期。
@@ -482,6 +487,46 @@ function toOutline(root) {
   }
   for (const l of tail) out.push(l);
   return out.join('\n') + (out.length ? '\n' : '');
+}
+
+// ---------------------------------------------------------------- copy / paste
+
+// Copy turns the chosen clusters into a standalone Markdown snippet: every
+// copy root starts at column 0, no canvas coordinates. It is meant to be read
+// — by a person or an AI — so it carries exactly what a node block carries.
+function outlineSnippet(roots) {
+  const out = [];
+  for (const node of roots || []) writeNodeLines(node, 0, out, false);
+  return out.join('\n') + (out.length ? '\n' : '');
+}
+
+// A selected node whose ancestor is also selected is not a copy root: it
+// already travels inside that ancestor's subtree. Everything else becomes a
+// root of its own, in document order — select three branches and the snippet
+// lists three roots side by side.
+function rootsAmong(root, ids) {
+  const set = new Set(ids || []);
+  const out = [];
+  const walk = (node, inside) => {
+    if (set.has(node.id) && !inside) out.push(node);
+    const covered = inside || set.has(node.id);
+    for (const child of node.children) walk(child, covered);
+  };
+  if (!root) return out;
+  if (root.virt) for (const node of root.children) walk(node, false);
+  else walk(root, false);
+  return out;
+}
+
+// Deep copy for paste: new ids, text/note/collapsed kept, pos dropped (a node
+// hung under another parent has no cluster position of its own).
+function cloneForPaste(node) {
+  if (!node) return null;
+  const out = newNode(String(node.text == null ? '' : node.text));
+  out.note = node.note ? String(node.note) : '';
+  out.collapsed = !!node.collapsed;
+  out.children = (node.children || []).map(cloneForPaste);
+  return out;
 }
 
 // Structure fingerprint: what a proposal was written against. Depth + text of
