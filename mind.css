@@ -2085,7 +2085,10 @@ body.dragging-node, body.dragging-node * { cursor: grabbing !important; }
   top: 28px;
   z-index: 6;
   display: flex;
+  flex-wrap: wrap;
   gap: 5px;
+  width: max-content;
+  max-width: 134px;          /* 12 色排两行，6+6——一行太长，小框旁边会拖出一条龙 */
   padding: 6px;
   background: #262b33;
   border: 1px solid #3a414b;
@@ -2112,6 +2115,20 @@ body.dragging-node, body.dragging-node * { cursor: grabbing !important; }
   border-radius: 4px;
   padding: 1px 5px;
   outline: none;
+}
+/* 近白注释框：白在深底上按普通透明度混会读成灰，但整块提亮又会变成一片
+   煞白。所以只把 1px 描边提到 64%，标题条、框内、标题文字全部保持和别的
+   颜色一样——白框只是"轮廓更清楚"，不再是发光的白条。 */
+.comment.light {
+  border-color: color-mix(in srgb, var(--c) 64%, transparent);
+}
+.comment.light:hover { border-color: color-mix(in srgb, var(--c) 86%, transparent); }
+.comment.light.selected {
+  border-color: color-mix(in srgb, var(--c) 86%, transparent);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--c) 72%, transparent),
+    0 0 0 5px color-mix(in srgb, var(--c) 12%, transparent),
+    0 0 24px color-mix(in srgb, var(--c) 20%, transparent);
 }
 /* 节点整体抬到注释框上面。 */
 .node-wrap { z-index: 1; }

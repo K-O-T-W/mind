@@ -188,14 +188,14 @@ function toggleCommentSwatches(cEl) {
   const row = cEl.querySelector('.comment-swatches');
   if (!row) return;
   if (!row.childElementCount) {
-    for (const color of PALETTE) {
+    for (const swatch of COMMENT_PALETTE) {
       const b = document.createElement('button');
       b.className = 'comment-swatch';
       b.type = 'button';
       b.tabIndex = -1;
-      b.dataset.c = color;
-      b.title = color;
-      b.style.background = color;
+      b.dataset.c = swatch.c;
+      b.title = swatch.n + ' ' + swatch.c;
+      b.style.background = swatch.c;
       row.appendChild(b);
     }
   }

@@ -9,6 +9,24 @@
 const ACCENT = '#7aa2f7';
 const PALETTE = ['#7aa2f7', '#e0af68', '#9ece6a', '#c39bf7', '#f28ba8', '#62cfd6', '#f2a65a', '#8fb8ff'];
 
+// 注释框的色板和分支色分开：注释框是给人做分类标注的，需要白、灰、红、黄
+// 这类语义色；分支色要去画连线和节点描边，浅色混进去会让某条分支在深底上
+// 发飘。前 8 个和分支色保持一致，选过的老注释框颜色不会看起来像换了一套。
+const COMMENT_PALETTE = [
+  { c: '#7aa2f7', n: '蓝' },
+  { c: '#e0af68', n: '琥珀' },
+  { c: '#9ece6a', n: '绿' },
+  { c: '#c39bf7', n: '紫' },
+  { c: '#f28ba8', n: '粉' },
+  { c: '#62cfd6', n: '青' },
+  { c: '#f2a65a', n: '橙' },
+  { c: '#8fb8ff', n: '天蓝' },
+  { c: '#ffffff', n: '白' },
+  { c: '#98a2b3', n: '银灰' },
+  { c: '#ff5d5d', n: '红' },
+  { c: '#ffd75e', n: '黄' },
+];
+
 // Several documents live at once, one per tab. `mind` is whichever one is on
 // screen; switching tabs rebinds it, and every function below keeps working
 // unchanged because they all read through that name.
@@ -145,6 +163,19 @@ function walkIndex(node, parent, depth, branch, visible) {
 function branchColor(node) {
   if (!node || node.branch < 0) return ACCENT;
   return PALETTE[node.branch % PALETTE.length];
+}
+
+// 白、近白这类浅色在深底上按普通透明度混会读成灰，注释框的描边需要给
+// 它们亮一档。只认接近白的色（HSL 亮度 ≥ .86）——银灰本来就该是灰的，
+// 饱和色靠色相已经认得出来，提亮反而刺眼。
+function isLightColor(hex) {
+  const m = /^#([0-9a-fA-F]{6})$/.exec(String(hex || ''));
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  return (Math.max(r, g, b) + Math.min(r, g, b)) / 2 >= 0.86;
 }
 
 function parentOf(node) {

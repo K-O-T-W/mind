@@ -332,6 +332,7 @@ function renderComments() {
       commentEls.set(c.id, el);
     }
     el.style.setProperty('--c', c.color || '#7aa2f7');
+    el.classList.toggle('light', isLightColor(c.color));
     el.style.transform = `translate3d(${Math.round(c.x)}px, ${Math.round(c.y)}px, 0)`;
     el.style.width = Math.round(c.w) + 'px';
     el.style.height = Math.round(c.h) + 'px';
