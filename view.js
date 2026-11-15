@@ -25,6 +25,7 @@ const ui = {
   searchNext: document.getElementById('searchNext'),
   searchClose: document.getElementById('searchClose'),
   exportMenu: document.getElementById('exportMenu'),
+  ctxMenu: document.getElementById('ctxMenu'),
   helpOverlay: document.getElementById('helpOverlay'),
   toast: document.getElementById('toast'),
   dragHint: document.getElementById('dragHint'),

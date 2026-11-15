@@ -223,6 +223,8 @@
   <div class="menu-foot">导出当前可见的树</div>
 </div>
 
+<div id="ctxMenu" class="menu ctx-menu" hidden role="menu"></div>
+
 <div id="folderMenu" class="menu" hidden role="menu">
   <button data-folder="grant" role="menuitem"><span>重新授权</span></button>
   <button data-folder="write" role="menuitem"><span>把文档写进文件夹</span></button>
@@ -257,14 +259,16 @@
         <dl>
           <dt>拖顶节点</dt><dd>整簇跟着走</dd>
           <dt>拖子节点</dt><dd>只能换父级，不能单独摆</dd>
-          <dt>拖空白</dt><dd>框选节点；框住注释框或框过标题栏也会选中它</dd>
+          <dt>拖空白</dt><dd>框选节点；框过注释框的标题栏才会选中它（框体内部算空地）</dd>
           <dt>双击空白</dt><dd>在那儿新建一个顶节点</dd>
-          <dt>中键 / 右键拖</dt><dd>平移画布</dd>
-          <dt><kbd>Ctrl</kbd>+滚轮</dt><dd>以指针为中心缩放</dd>
+          <dt>滚轮</dt><dd>以指针为中心缩放（不用按 <kbd>Ctrl</kbd>）</dd>
+          <dt>中键拖</dt><dd>平移画布</dd>
+          <dt>右键</dt><dd>打开操作面板：新建节点 / 注释框、编辑文字、备注、复制粘贴、缩进折叠、删除（节点有节点菜单，空地有画布菜单；注释框只有标题条有注释菜单，框体内部一律等于空地）</dd>
           <dt><kbd>F</kbd></dt><dd>适应画布</dd>
           <dt><kbd>Alt</kbd>+点连线</dt><dd>剪断：子节点带着子树独立成簇（按住 Alt 连线亮红）</dd>
-          <dt>拖注释框标题条</dt><dd>只有标题条能拖；框体内部拖动是框选节点（单击框体仍选中框）。框带着根在框里的簇一起走；右下角拖角拉伸</dd>
-          <dt>注释框色点</dt><dd>换颜色；选中后按 <kbd>Delete</kbd> 删框（节点全留）；双击框体或 <kbd>F2</kbd> 改名</dd>
+          <dt>拖注释框标题条</dt><dd>只有标题条能拖、能选中框；框体内部拖动是框选节点，单击框体不选中（等于点空白）。框带着根在框里的簇一起走；右下角拖角拉伸</dd>
+          <dt>注释框色点</dt><dd>换颜色；选中后按 <kbd>Delete</kbd> 删框（节点全留）；双击标题条或 <kbd>F2</kbd> 改名</dd>
+          <dt>双击框体内部</dt><dd>和双击空白一样：在指针处新建一个顶节点（双击标题条才是改名）</dd>
         </dl>
       </section>
       <section>
@@ -276,7 +280,7 @@
           <dt><kbd>F2</kbd> 或双击</dt><dd>编辑文字</dd>
           <dt><kbd>N</kbd></dt><dd>打开 / 收起备注</dd>
           <dt><kbd>Ctrl+C</kbd></dt><dd>复制选中的节点：每个根连同整棵子树，写成可直接发给 AI 的 Markdown；多选时按各自的根平铺</dd>
-          <dt><kbd>Ctrl+V</kbd></dt><dd>把刚复制的那串挂到当前选中节点下面；几个根就并成几个子块</dd>
+          <dt><kbd>Ctrl+V</kbd></dt><dd>挂到当前选中节点下面，几个根并成几个子块；没选中节点时粘到鼠标处的空白，成为新的顶层簇</dd>
           <dt><kbd>Ctrl+Z</kbd></dt><dd>撤销</dd>
         </dl>
       </section>

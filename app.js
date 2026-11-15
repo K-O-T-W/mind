@@ -412,9 +412,10 @@ function reparentNode(node, target) {
 // ---------------------------------------------------------------- undo
 
 function revealSelection() {
+  // 撤销掉的节点不该把选中甩到“第一个顶节点”：那会让画布跳到别处。
+  // 宁可空着，视口留在原地，等用户自己选。
   if (!mind.selectedId || !nodes.has(mind.selectedId)) {
-    const first = mind.root && mind.root.children[0];
-    mind.selectedId = first ? first.id : null;
+    mind.selectedId = null;
   }
   if (!mind.selection || !mind.selection.size) mind.selection = new Set();
   for (const id of [...mind.selection]) if (!nodes.has(id)) mind.selection.delete(id);
@@ -439,7 +440,9 @@ function undo() {
   revealSelection();
   mind.dirty = true;
   render({ animate: false });
-  if (mind.selectedId) select(mind.selectedId);
+  // 不 ensure：撤销/重做只是把树还原，镜头没理由跟着选中满世界跑。
+  if (mind.selectedId) select(mind.selectedId, { ensure: false });
+  else paintSelection();
   if (typeof syncNotePanel === 'function') syncNotePanel(true);
   updateStatus();
   scheduleAutosave();
@@ -455,7 +458,9 @@ function redo() {
   revealSelection();
   mind.dirty = true;
   render({ animate: false });
-  if (mind.selectedId) select(mind.selectedId);
+  // 不 ensure：撤销/重做只是把树还原，镜头没理由跟着选中满世界跑。
+  if (mind.selectedId) select(mind.selectedId, { ensure: false });
+  else paintSelection();
   if (typeof syncNotePanel === 'function') syncNotePanel(true);
   updateStatus();
   scheduleAutosave();
@@ -675,6 +680,7 @@ function onKeyDown(e) {
     let closed = false;
     if (mind.searchOpen) { closeSearch(); closed = true; }
     if (!ui.exportMenu.hidden) { closeExportMenu(); closed = true; }
+    if (!ui.ctxMenu.hidden && typeof closeCtxMenu === 'function') { closeCtxMenu(); focusStage(); closed = true; }
     if (mind.noteOpen) { closeNote(); closed = true; }
     if (closed) { e.preventDefault(); return; }
   }

@@ -898,6 +898,49 @@ body.resizing-panel * { cursor: col-resize !important; user-select: none !import
   color: var(--muted-2);
 }
 
+/* 右键菜单：条目多，放宽一点；窗口矮时就自己滚。 */
+.ctx-menu {
+  width: 232px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+.menu button:disabled {
+  opacity: .34;
+  cursor: default;
+}
+.menu button:disabled:hover {
+  background: transparent;
+  color: var(--text-2);
+}
+.menu button.danger { color: #f28ba8; }
+.menu button.danger:hover { background: rgba(242, 139, 168, .14); color: #ffb3c6; }
+.menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--line-soft);
+}
+.menu-label {
+  padding: 5px 9px 2px;
+  font-size: 10.5px;
+  color: var(--muted-2);
+}
+.ctx-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 5px 9px 7px;
+}
+.ctx-color {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.ctx-color:hover { transform: scale(1.14); }
+.ctx-color.on { box-shadow: 0 0 0 2px rgba(255, 255, 255, .4); }
+
 /* ----------------------------------------------------------------- help */
 
 .overlay {

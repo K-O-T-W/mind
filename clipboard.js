@@ -97,16 +97,17 @@ function pasteClipboard() {
     return;
   }
   if (!clipBuffer || !clipBuffer.roots || !clipBuffer.roots.length) {
-    toast('还没有复制过的节点（Ctrl+C 复制，再选中一个节点 Ctrl+V 粘贴）');
+    toast('还没有复制过的节点（Ctrl+C 复制，再选中节点或空白处 Ctrl+V 粘贴）');
     return;
   }
-  if (mind.selectedCommentId != null) {
-    toast('先选中一个节点，粘贴会挂到它下面');
-    return;
-  }
+
   const target = selectedNode();
   if (!target) {
-    toast('先选中一个节点，粘贴会挂到它下面');
+    const added = pasteToCanvas();
+    if (!added.length) return;
+    const total = added.reduce((n, r) => n + subtreeCount(r), 0);
+    toast(`已粘贴 ${total} 个节点到空白处`);
+    if (typeof focusStage === 'function') focusStage();
     return;
   }
 
@@ -142,4 +143,54 @@ function pasteClipboard() {
   const label = String(target.text || '').replace(/\s+/g, ' ').trim() || '未命名';
   toast(`已粘贴 ${nodes} 个节点到「${label}」下`);
   if (typeof focusStage === 'function') focusStage();
+}
+
+// 没有选中节点：粘贴成新的顶层簇，落在鼠标处的空白上。多个根竖着排开，
+// 第一个簇的中心对准指针，和双击空白新建节点的落点手感一致。
+function pasteToCanvas() {
+  const at = (typeof mouseWorldForNewComment === 'function')
+    ? mouseWorldForNewComment()
+    : viewportCenterWorld();
+
+  const snap = snapshot();
+  const added = [];
+  for (const data of clipBuffer.roots) {
+    const clone = cloneForPaste(data);
+    if (!clone) continue;
+    clone.pos = { x: at.x, y: at.y };
+    mind.root.children.push(clone);
+    added.push(clone);
+  }
+  if (!added.length) return [];
+
+  pushUndo(snap);
+  mind.selection = new Set(added.map((n) => n.id));
+  mind.selectedId = added[0].id;
+  mind.selectedCommentId = null;
+
+  markDirty();
+  reindex();
+  // 先不带布局动画：此刻还没量过克隆的高度，等 render 量完再定最终坐标，
+  // 否则会先落在粗位置上、再被第二遍坐标拽一下。
+  render({ animate: false });
+
+  let y = at.y - ((added[0].subH || added[0].h || 34) / 2);
+  for (const clone of added) {
+    clone.pos = {
+      x: Math.round(at.x - ((clone.w || 140) / 2)),
+      y: Math.round(y),
+    };
+    y += (clone.subH || clone.h || 34) + 24;
+  }
+  computeLayout();
+  stick();
+
+  for (const node of added) markFresh(node.id);
+  paintSelection();
+  drawLinks();
+  if (typeof syncNotePanel === 'function') syncNotePanel();
+  if (typeof syncBatchBar === 'function') syncBatchBar();
+  updateStatus();
+  saveAutosaveNow();
+  return added;
 }

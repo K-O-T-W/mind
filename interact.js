@@ -19,7 +19,7 @@ function bindUI() {
   stage.addEventListener('pointercancel', onPointerUp);
   stage.addEventListener('click', onClick);
   stage.addEventListener('dblclick', onDblClick);
-  stage.addEventListener('contextmenu', (e) => e.preventDefault());
+  stage.addEventListener('contextmenu', onContextMenu);
   stage.addEventListener('wheel', onWheel, { passive: false });
 
   // 按住 Alt 时给连线一点颜色，提示这里可以剪断（虚幻引擎同款）。
@@ -68,6 +68,7 @@ function bindUI() {
   ui.zoomLabel.addEventListener('click', () => { zoomBy(1 / mind.view.s); ui.zoomLabel.blur(); });
 
   bindNoteUI();
+  bindCtxMenu();
   if (typeof bindHandoffUI === 'function') bindHandoffUI();
   if (typeof bindReviewUI === 'function') bindReviewUI();
 
@@ -101,6 +102,7 @@ function bindUI() {
     if (!ui.folderMenu.hidden) {
       if (!ui.folderMenu.contains(e.target) && !ui.folderChip.contains(e.target)) closeFolderMenu();
     }
+    if (!ui.ctxMenu.hidden && !ui.ctxMenu.contains(e.target)) closeCtxMenu();
     // 点到色板外面就收起所有注释框的色板。
     document.querySelectorAll('.comment-swatches').forEach((row) => {
       if (row.hidden) return;
@@ -211,6 +213,24 @@ function onPointerDown(e) {
   // 记住鼠标在画布里的位置：空地按 C 时，注释框就在这儿长出来。
   mind.lastMouseClient = { x: e.clientX, y: e.clientY };
 
+  // 右键只留给上下文菜单，不启动任何手势（平移改成中键）。
+  if (e.button === 2) return;
+
+  // 中键只有一个职责：平移。放在所有控件分支之前，免得中键落在输入框、
+  // 备注点或审批按钮上时被别的逻辑接走，也顺手挡掉浏览器默认的中键手势。
+  // 按下先 settle：刚新建/删除节点时布局动画还在跑，不落位就拖动会一边
+  // 搬镜头一边看节点滑，像画面在跳。
+  if (e.button === 1) {
+    if (typeof settle === 'function') settle();
+    mind.panning = { x0: e.clientX, y0: e.clientY, vx: mind.view.x, vy: mind.view.y, moved: false };
+    blankClickOk = false;
+    grabPointer(e.pointerId);
+    stage.classList.add('panning');
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
+
   // Alt+点连线 = 剪断（虚幻引擎同款）。几何命中，不依赖事件落在连线上；
   // 没剪到就照常往下走（选中节点 / 框选）。审批预览里不动真树。
   if (e.altKey && e.button === 0 && !mind.review) {
@@ -284,9 +304,8 @@ function onPointerDown(e) {
     return;
   }
 
-  // 框体内部：单击选中框交给 onClick；按下这一刻先不选中。
-  // 否则一按下就亮选中描边，拖动框选的第一帧又取消，看起来就是“闪一下”。
-  // 这里只记下起点，让 marquee 延迟抓指针（双击改标题要保住 body 这个 target）。
+  // 框体内部：单击不选中框（只有标题条能选中它）；按下这一刻也不选中。
+  // 这里只记下起点，让 marquee 延迟抓指针——双击建节点要保住 body 这个 target。
   const cBody = e.target.closest('.comment-body');
   if (cEl && cBody && e.button === 0 && !mind.review && !e.shiftKey) {
     if (mind.editingId) commitEdit();
@@ -326,15 +345,7 @@ function onPointerDown(e) {
   }
   if (e.target.closest('textarea')) return;
 
-  // Middle or right button pans; the left button is for selecting and moving.
-  if (e.button === 1 || e.button === 2) {
-    mind.panning = { x0: e.clientX, y0: e.clientY, vx: mind.view.x, vy: mind.view.y, moved: false };
-    blankClickOk = false;
-    grabPointer(e.pointerId);
-    stage.classList.add('panning');
-    e.preventDefault();
-    return;
-  }
+  // 中键已在最前面处理；这里只剩左键和右键（右键更早已返回）。
   if (e.button !== 0) return;
 
   const wrap = e.target.closest('.node-wrap');
@@ -638,15 +649,14 @@ function updateMarquee(e) {
     if (nx < wx1 && nx + (node.w || 0) > wx0 && ny < wy1 && ny + (node.h || 0) > wy0) hits.push(node);
   }
 
-  // 注释框也是可选中的东西：框住整个框、或者框过它的标题栏，就算选中它。
-  // 只在框体内部拖一小块时不算——那里应该是在选里面的节点。
+  // 注释框只有一个触发区：顶部标题条。框体内部一律当空地——那一块要能框选
+  // 节点、双击建节点、右键出画布菜单，不能因为压在框上就变成操作注释。
   const commentHits = [];
   if (!mind.review) {
     for (const c of docComments()) {
       const head = c.y + Math.min(26, c.h);
       const headHit = !(c.x > wx1 || c.x + c.w < wx0 || head < wy0 || c.y > wy1);
-      const inside = c.x >= wx0 && c.y >= wy0 && c.x + c.w <= wx1 && c.y + c.h <= wy1;
-      if (headHit || inside) commentHits.push(c);
+      if (headHit) commentHits.push(c);
     }
   }
 
@@ -696,40 +706,28 @@ function onClick(e) {
     return;
   }
   if (blankClickOk && !e.shiftKey) {
-    // Fallback: a simple click in the body without the pointerdown handshake
-    // still selects the frame. A real drag sets blankClickOk=false.
-    const cBody = e.target.closest('.comment-body');
-    if (cBody && !mind.review) {
-      const cEl = cBody.closest('.comment');
-      const c = cEl && docComments().find((x) => x.id === cEl.dataset.id);
-      if (c) {
-        mind.selectedCommentId = c.id;
-        mind.selection = new Set();
-        mind.selectedId = null;
-        renderComments();
-        paintSelection();
-        drawLinks();
-        if (typeof syncNotePanel === 'function') syncNotePanel();
-        updateStatus();
-        focusStage();
-        blankClickOk = false;
-        return;
-      }
-    }
+    // 单击框体内部 = 单击空地：注释框只有标题条能选中。框体内部那一块留给
+    // 双击新建节点和拖框选节点，不该在点击时亮一下注释框的选中描边。
     clearSelection();
+    focusStage();
   }
   blankClickOk = false;
 }
 
 function onDblClick(e) {
   if (e.target.closest('.badge') || e.target.closest('.note-mark') || e.target.closest('textarea')) return;
-  // 双击注释框任意地方 = 改标题（UE 同款）；色点/色板/拉伸角除外。
+  // 注释框只有顶部标题条是“改名区”：双击标题条改名；双击框体内部不拦截，
+  // 落到下面“空地双击”的分支——在指针处新建节点。框里要能继续长节点，
+  // 不能整块框都吃掉双击（那会和双击建节点的操作撞车）。
   const cEl = e.target.closest('.comment');
   if (cEl) {
     if (mind.review) return;
-    if (e.target.closest('.comment-edit, .comment-dot, .comment-swatch, .comment-grip')) return;
-    editCommentTitle(cEl.dataset.id);
-    return;
+    if (e.target.closest('.comment-dot, .comment-swatch, .comment-grip, .comment-edit')) return;
+    if (e.target.closest('.comment-head')) {
+      editCommentTitle(cEl.dataset.id);
+      return;
+    }
+    // 框体内部：继续往下走。
   }
   const wrap = e.target.closest('.node-wrap');
   if (!wrap) {
@@ -748,14 +746,257 @@ function onDblClick(e) {
 function onWheel(e) {
   e.preventDefault();
   cancelViewAnim();                          // 滚轮接管镜头，滑行到此为止
+  if (!ui.ctxMenu.hidden) closeCtxMenu();
   const unit = e.deltaMode === 1 ? 18 : (e.deltaMode === 2 ? stage.clientHeight : 1);
-  if (e.ctrlKey || e.metaKey) {
-    zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * unit * 0.0022));
-  } else {
-    mind.view.x -= e.deltaX * unit;
-    mind.view.y -= e.deltaY * unit;
-    applyView();
+  // 滚轮直接缩放，指针是锚点；Ctrl 不再是前提，滚轮也不再负责平移。
+  zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * unit * 0.0022));
+}
+
+// ---------------------------------------------------------------- context menu
+
+// 右键 = 画布上的操作面板。菜单项按右键命中的目标分三套：节点、注释框、空白。
+// 每一项对应一个已有快捷键命令，所以菜单只是把藏在键盘里的动作摆到明面上。
+let ctxKind = 'canvas';
+let ctxTargetId = null;
+
+function ctxComment() {
+  const id = ctxTargetId || mind.selectedCommentId;
+  return id ? (docComments().find((c) => c.id === id) || null) : null;
+}
+
+function closeCtxMenu() {
+  if (!ui.ctxMenu || ui.ctxMenu.hidden) return;
+  ui.ctxMenu.hidden = true;
+  ui.ctxMenu.innerHTML = '';
+  ctxKind = 'canvas';
+  ctxTargetId = null;
+}
+
+function ctxNodeItems(node) {
+  const top = isTop(node);
+  const siblings = (top ? mind.root : (parentOf(node) || mind.root)).children;
+  const i = siblings.indexOf(node);
+  const hasClip = !!(typeof clipBuffer !== 'undefined' && clipBuffer && clipBuffer.roots && clipBuffer.roots.length);
+  return [
+    { cmd: 'edit', label: '编辑文字', hint: 'F2' },
+    { cmd: 'child', label: '添加子节点', hint: 'Tab' },
+    { cmd: 'sibling', label: '添加同级节点', hint: 'Enter' },
+    { sep: true },
+    { cmd: 'note', label: node.note ? '查看 / 编辑备注' : '添加备注', hint: 'N' },
+    { cmd: 'copy', label: '复制（含子树）', hint: 'Ctrl+C' },
+    { cmd: 'paste', label: '粘贴到这里', hint: 'Ctrl+V', disabled: !hasClip },
+    { sep: true },
+    { cmd: 'up', label: '上移一位', hint: 'Alt+↑', disabled: top || i <= 0 },
+    { cmd: 'down', label: '下移一位', hint: 'Alt+↓', disabled: top || i < 0 || i >= siblings.length - 1 },
+    { cmd: 'indent', label: '缩进一级', hint: 'Ctrl+]', disabled: top || i <= 0 },
+    { cmd: 'outdent', label: '取消缩进', hint: 'Ctrl+[', disabled: top },
+    { cmd: 'collapse', label: node.collapsed ? '展开子项' : '折叠子项', hint: '空格', disabled: !node.children.length },
+    { sep: true },
+    { cmd: 'commentSel', label: '用注释框框住', hint: 'C' },
+    { cmd: 'delete', label: '删除节点', hint: 'Delete', danger: true },
+  ];
+}
+
+function ctxCommentItems() {
+  return [
+    { cmd: 'renameComment', label: '重命名注释', hint: 'F2 / 双击标题' },
+    { colors: true, label: '换颜色' },
+    { sep: true },
+    { cmd: 'deleteComment', label: '删除注释框', hint: 'Delete · 节点保留', danger: true },
+  ];
+}
+
+function ctxCanvasItems() {
+  return [
+    { cmd: 'newHere', label: '在此新建节点', hint: '双击空白' },
+    { cmd: 'commentHere', label: '在此新建注释框', hint: 'C' },
+    { sep: true },
+    { cmd: 'fit', label: '适应画布', hint: 'F' },
+    { cmd: 'search', label: '搜索', hint: 'Ctrl+F' },
+    { cmd: 'undo', label: '撤销', hint: 'Ctrl+Z', disabled: !mind.undo.length },
+    { cmd: 'redo', label: '重做', hint: 'Ctrl+Shift+Z', disabled: !mind.redo.length },
+    { sep: true },
+    { cmd: 'help', label: '操作说明', hint: '?' },
+  ];
+}
+
+function renderCtxMenu(items) {
+  const menu = ui.ctxMenu;
+  menu.innerHTML = '';
+  for (const it of items) {
+    if (it.sep) {
+      const sep = document.createElement('div');
+      sep.className = 'menu-sep';
+      menu.appendChild(sep);
+      continue;
+    }
+    if (it.colors) {
+      const label = document.createElement('div');
+      label.className = 'menu-label';
+      label.textContent = it.label || '换颜色';
+      menu.appendChild(label);
+      const row = document.createElement('div');
+      row.className = 'ctx-colors';
+      const cur = ctxComment();
+      for (const sw of COMMENT_PALETTE) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ctx-color' + (cur && cur.color === sw.c ? ' on' : '');
+        b.dataset.color = sw.c;
+        b.title = sw.n;
+        b.setAttribute('aria-label', sw.n);
+        b.style.background = sw.c;
+        row.appendChild(b);
+      }
+      menu.appendChild(row);
+      continue;
+    }
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('role', 'menuitem');
+    b.dataset.cmd = it.cmd;
+    if (it.disabled) b.disabled = true;
+    if (it.danger) b.classList.add('danger');
+    const label = document.createElement('span');
+    label.textContent = it.label;
+    b.appendChild(label);
+    if (it.hint) {
+      const hint = document.createElement('span');
+      hint.className = 'menu-hint';
+      hint.textContent = it.hint;
+      b.appendChild(hint);
+    }
+    menu.appendChild(b);
   }
+}
+
+function openCtxMenu(clientX, clientY, kind, items, targetId) {
+  ctxKind = kind;
+  ctxTargetId = targetId || null;
+  renderCtxMenu(items);
+  const menu = ui.ctxMenu;
+  menu.hidden = false;
+  menu.style.left = '0px';
+  menu.style.top = '0px';
+  const w = menu.offsetWidth;
+  const h = menu.offsetHeight;
+  menu.style.left = Math.max(6, Math.min(window.innerWidth - w - 6, clientX)) + 'px';
+  menu.style.top = Math.max(6, Math.min(window.innerHeight - h - 6, clientY)) + 'px';
+  const first = menu.querySelector('button:not(:disabled)');
+  if (first) first.focus({ preventScroll: true });
+}
+
+function onContextMenu(e) {
+  // 输入框和搜索面板里保留浏览器原生菜单（复制、粘贴要用）。
+  if (e.target.closest('#searchPanel, input, textarea, [contenteditable]')) return;
+  e.preventDefault();
+  if (!mind || mind.review) return;
+
+  const wrap = e.target.closest('.node-wrap');
+  // 注释框的触发区只有顶部标题条；框体内部一律当空地（右键要能新建节点）。
+  const cHead = e.target.closest('.comment-head');
+
+  if (wrap) {
+    const node = nodes.get(wrap.dataset.id);
+    if (!node) return;
+    if (mind.editingId) commitEdit();
+    select(node.id, { ensure: false });
+    openCtxMenu(e.clientX, e.clientY, 'node', ctxNodeItems(node), node.id);
+    return;
+  }
+  if (cHead) {
+    const cEl = cHead.closest('.comment');
+    const c = cEl && docComments().find((x) => x.id === cEl.dataset.id);
+    if (!c) return;
+    if (mind.editingId) commitEdit();
+    mind.selectedCommentId = c.id;
+    mind.selection = new Set();
+    mind.selectedId = null;
+    renderComments();
+    paintSelection();
+    if (typeof syncNotePanel === 'function') syncNotePanel();
+    openCtxMenu(e.clientX, e.clientY, 'comment', ctxCommentItems(c), c.id);
+    return;
+  }
+  // 空白：和左键点空白一样放下选中，菜单只放画布级动作。
+  if (mind.editingId) commitEdit();
+  clearSelection();
+  openCtxMenu(e.clientX, e.clientY, 'canvas', ctxCanvasItems(), null);
+}
+
+function runCtxCmd(cmd, kind, targetId) {
+  const node = kind === 'node' ? selectedNode() : null;
+  const c = (kind === 'comment' && targetId)
+    ? docComments().find((x) => x.id === targetId) || null
+    : null;
+  switch (cmd) {
+    case 'edit': if (node) startEdit(node.id); break;
+    case 'child': if (node) addChild(node); break;
+    case 'sibling': if (node) addSibling(node); break;
+    case 'note': if (node) openNote(node.id); break;
+    case 'copy': if (typeof copySelection === 'function') copySelection(); break;
+    case 'paste': if (typeof pasteClipboard === 'function') pasteClipboard(); break;
+    case 'up': if (node) moveSibling(node, -1); break;
+    case 'down': if (node) moveSibling(node, 1); break;
+    case 'indent': if (node) indentNode(node); break;
+    case 'outdent': if (node) outdentNode(node); break;
+    case 'collapse': if (node) toggleCollapse(node); break;
+    case 'commentSel': createCommentFromSelection(); break;
+    case 'delete':
+      if (node) {
+        if (mind.selection.size > 1) deleteSelection();
+        else deleteNode(node);
+      }
+      break;
+    case 'renameComment': if (c) editCommentTitle(c.id); break;
+    case 'deleteComment': if (c) deleteCommentById(c.id); break;
+    case 'newHere': {
+      const p = mouseWorldForNewComment();
+      addTopLevelAt(p.x, p.y);
+      break;
+    }
+    case 'commentHere': createCommentFromSelection(); break;
+    case 'fit': fit(); break;
+    case 'search': openSearch(); break;
+    case 'undo': undo(); break;
+    case 'redo': redo(); break;
+    case 'help': openHelp(); break;
+    default: break;
+  }
+}
+
+function bindCtxMenu() {
+  ui.ctxMenu.addEventListener('click', (e) => {
+    const swatch = e.target.closest('.ctx-color');
+    if (swatch) {
+      const c = ctxComment();
+      const color = swatch.dataset.color;
+      const kind = ctxKind;
+      const targetId = ctxTargetId;
+      closeCtxMenu();
+      if (c && color && c.color !== color) {
+        const snap = snapshot();
+        c.color = color;
+        pushUndo(snap);
+        markDirty();
+        renderComments();
+        saveAutosaveNow();
+      }
+      focusStage();
+      return;
+    }
+    const btn = e.target.closest('button[data-cmd]');
+    if (!btn || btn.disabled) return;
+    const cmd = btn.dataset.cmd;
+    const kind = ctxKind;
+    const targetId = ctxTargetId;
+    closeCtxMenu();
+    runCtxCmd(cmd, kind, targetId);
+    // 会打开编辑框/备注/搜索的命令自己管焦点；别用 focusStage 把输入框顶掉，
+    // 否则空节点一失焦就被当空文本删掉。
+    const ae = document.activeElement;
+    if (!ae || (ae.tagName !== 'TEXTAREA' && ae.tagName !== 'INPUT')) focusStage();
+  });
 }
 
 // ---------------------------------------------------------------- search
